@@ -221,7 +221,11 @@ TclpGetTimeZone(
     int timeZone;
 
     tzset();
-    timeZone = timezone / 60;
+#if _MSC_VER < 1900
+	timeZone = timezone / 60;
+#else
+	timeZone = _timezone / 60;
+#endif
 
     return timeZone;
 }
@@ -658,7 +662,11 @@ TclpGetDate(
 	    return TclpLocaltime(t);
 	}
 
+#if _MSC_VER < 1900
 	time = *t - timezone;
+#else
+	time = *t - _timezone;
+#endif
 
 	/*
 	 * If we aren't near to overflowing the long, just add the bias and
@@ -677,8 +685,12 @@ TclpGetDate(
 	     * Add the bias directly to the tm structure to avoid overflow.
 	     * Propagate seconds overflow into minutes, hours and days.
 	     */
+#if _MSC_VER < 1900
+		time = tmPtr->tm_sec - timezone;
+#else
+		time = tmPtr->tm_sec - _timezone;
+#endif
 
-	    time = tmPtr->tm_sec - timezone;
 	    tmPtr->tm_sec = (int)(time % 60);
 	    if (tmPtr->tm_sec < 0) {
 		tmPtr->tm_sec += 60;

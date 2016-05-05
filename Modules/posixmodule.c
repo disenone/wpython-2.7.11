@@ -529,7 +529,7 @@ _PyInt_FromDev(PY_LONG_LONG v)
 #endif
 
 
-#if defined _MSC_VER && _MSC_VER >= 1400
+#if defined _MSC_VER && _MSC_VER >= 1400 && _MSC_VER < 1900
 /* Microsoft CRT in VS2005 and higher will verify that a filehandle is
  * valid and raise an assertion if it isn't.
  * Normally, an invalid fd is likely to be a C program error and therefore

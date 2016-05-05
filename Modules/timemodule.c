@@ -764,7 +764,7 @@ inittimezone(PyObject *m) {
     }
 #else
 #endif /* HAVE_STRUCT_TM_TM_ZONE */
-#ifdef __CYGWIN__
+#if defined(__CYGWIN__) || defined(_MSC_VER) && _MSC_VER >= 1900
     tzset();
     PyModule_AddIntConstant(m, "timezone", _timezone);
     PyModule_AddIntConstant(m, "altzone", _timezone-3600);

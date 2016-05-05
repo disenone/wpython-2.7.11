@@ -431,7 +431,7 @@ cdebug	= $(cdebug) -Zi
 ### Warnings are too many, can't support warnings into errors.
 cdebug	= -Zi -Od $(DEBUGFLAGS)
 !else
-cdebug	= -Zi -WX $(DEBUGFLAGS)
+cdebug	= -Zi -WX- $(DEBUGFLAGS)
 !endif
 
 ### Declarations common to all compiler options
