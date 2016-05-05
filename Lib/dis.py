@@ -67,7 +67,7 @@ def disassemble(co, lasti=-1):
     i = 0
     extended_arg = 0
     free = None
-    while i < n:
+    for i in xrange(0, len(code), 2):
         c = code[i]
         op = ord(c)
         if i in linestarts:
@@ -83,13 +83,13 @@ def disassemble(co, lasti=-1):
         else: print '  ',
         print repr(i).rjust(4),
         print opname[op].ljust(20),
-        i = i+1
         if op >= HAVE_ARGUMENT:
-            oparg = ord(code[i]) + ord(code[i+1])*256 + extended_arg
-            extended_arg = 0
-            i = i+2
+            oparg = ord(code[i+1]) + extended_arg
             if op == EXTENDED_ARG:
-                extended_arg = oparg*65536L
+                extended_arg = oparg << 8
+                continue
+            else:
+                extended_arg = 0
             print repr(oparg).rjust(5),
             if op in hasconst:
                 print '(' + repr(co.co_consts[oparg]) + ')',
@@ -112,7 +112,8 @@ def disassemble_string(code, lasti=-1, varnames=None, names=None,
     labels = findlabels(code)
     n = len(code)
     i = 0
-    while i < n:
+    extended_arg = 0
+    for i in range(0, len(code), 2):
         c = code[i]
         op = ord(c)
         if i == lasti: print '-->',
@@ -121,10 +122,14 @@ def disassemble_string(code, lasti=-1, varnames=None, names=None,
         else: print '  ',
         print repr(i).rjust(4),
         print opname[op].ljust(15),
-        i = i+1
+
         if op >= HAVE_ARGUMENT:
-            oparg = ord(code[i]) + ord(code[i+1])*256
-            i = i+2
+            oparg = ord(code[i+1]) + extended_arg
+            if op == EXTENDED_ARG:
+                extended_arg = oparg << 8
+                continue
+            else:
+                extended_arg = 0
             print repr(oparg).rjust(5),
             if op in hasconst:
                 if constants:
@@ -158,16 +163,20 @@ def findlabels(code):
     labels = []
     n = len(code)
     i = 0
-    while i < n:
+    extended_arg = 0
+    for i in xrange(0, len(code), 2):
         c = code[i]
         op = ord(c)
-        i = i+1
         if op >= HAVE_ARGUMENT:
-            oparg = ord(code[i]) + ord(code[i+1])*256
-            i = i+2
+            oparg = ord(code[i+1]) + extended_arg
+            if op == EXTENDED_ARG:
+                extended_arg = oparg << 8
+                continue
+            else:
+                extended_arg = 0
             label = -1
             if op in hasjrel:
-                label = i+oparg
+                label = i+oparg+2
             elif op in hasjabs:
                 label = oparg
             if label >= 0:

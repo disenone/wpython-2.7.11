@@ -60,7 +60,7 @@ gen_send_ex(PyGenObject *gen, PyObject *arg, int exc)
         return NULL;
     }
 
-    if (f->f_lasti == -1) {
+    if (f->f_lasti == -2) {
         if (arg && arg != Py_None) {
             PyErr_SetString(PyExc_TypeError,
                             "can't send non-None value to a "

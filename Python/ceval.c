@@ -748,7 +748,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
         { \
     if (!lltrace && !_Py_TracingPossible) { \
         f->f_lasti = INSTR_OFFSET(); \
-        goto *opcode_targets[*next_instr++]; \
+        goto *opcode_targets[NEXTOP()]; \
     } \
     goto fast_next_opcode; \
         }
@@ -756,7 +756,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
 #define FAST_DISPATCH() { \
         if (!_Py_TracingPossible) { \
             f->f_lasti = INSTR_OFFSET(); \
-            goto *opcode_targets[*next_instr++]; \
+            goto *opcode_targets[NEXTOP()]; \
         } \
         goto fast_next_opcode;\
 }
@@ -871,9 +871,9 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
 /* Code access macros */
 
 #define INSTR_OFFSET()  ((int)(next_instr - first_instr))
-#define NEXTOP()        (*next_instr++)
-#define NEXTARG()       (next_instr += 2, (next_instr[-1]<<8) + next_instr[-2])
-#define PEEKARG()       ((next_instr[2]<<8) + next_instr[1])
+#define NEXTOP()        (next_instr+=2, next_instr[-2])
+#define NEXTARG()       (next_instr[-1])
+#define PEEKARG()       (next_instr[1])
 #define JUMPTO(x)       (next_instr = first_instr + (x))
 #define JUMPBY(x)       (next_instr += (x))
 
@@ -903,11 +903,9 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
 #if defined(DYNAMIC_EXECUTION_PROFILE) || USE_COMPUTED_GOTOS
 #define PREDICT(op)             if (0) goto PRED_##op
 #define PREDICTED(op)           PRED_##op:
-#define PREDICTED_WITH_ARG(op)  PRED_##op:
 #else
 #define PREDICT(op)             if (*next_instr == op) goto PRED_##op
-#define PREDICTED(op)           PRED_##op: next_instr++
-#define PREDICTED_WITH_ARG(op)  PRED_##op: oparg = PEEKARG(); next_instr += 3
+#define PREDICTED(op)           PRED_##op: oparg = PEEKARG(); next_instr += 2
 #endif
 
 
@@ -920,12 +918,12 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
 #define TOP()             (stack_pointer[-1])
 #define SECOND()          (stack_pointer[-2])
 #define THIRD()           (stack_pointer[-3])
-#define FOURTH()          (stack_pointer[-4])
+#define FOURTH()           (stack_pointer[-4])
 #define PEEK(n)           (stack_pointer[-(n)])
 #define SET_TOP(v)        (stack_pointer[-1] = (v))
 #define SET_SECOND(v)     (stack_pointer[-2] = (v))
 #define SET_THIRD(v)      (stack_pointer[-3] = (v))
-#define SET_FOURTH(v)     (stack_pointer[-4] = (v))
+#define SET_FOURTH(v)      (stack_pointer[-4] = (v))
 #define SET_VALUE(n, v)   (stack_pointer[-(n)] = (v))
 #define BASIC_STACKADJ(n) (stack_pointer += n)
 #define BASIC_PUSH(v)     (*stack_pointer++ = (v))
@@ -1020,7 +1018,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
        f->f_lasti now refers to the index of the last instruction
        executed.  You might think this was obvious from the name, but
        this wasn't always true before 2.3!  PyFrame_New now sets
-       f->f_lasti to -1 (i.e. the index *before* the first instruction)
+       f->f_lasti to -2 (i.e. the index *before* the first instruction)
        and YIELD_VALUE doesn't fiddle with f_lasti any more.  So this
        does work.  Promise.
 
@@ -1032,7 +1030,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
        FOR_ITER is effectively a single opcode and f->f_lasti will point
        at to the beginning of the combined pair.)
     */
-    next_instr = first_instr + f->f_lasti + 1;
+    next_instr = first_instr + f->f_lasti + 2;
     stack_pointer = f->f_stacktop;
     assert(stack_pointer != NULL);
     f->f_stacktop = NULL;       /* remains NULL unless yield suspends frame */
@@ -1165,10 +1163,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
         /* Extract opcode and argument */
 
         opcode = NEXTOP();
-        oparg = 0;   /* allows oparg to be stored in a register because
-            it doesn't have to be remembered across a full loop */
-        if (HAS_ARG(opcode))
-            oparg = NEXTARG();
+        oparg = NEXTARG();
     dispatch_opcode:
 #ifdef DYNAMIC_EXECUTION_PROFILE
 #ifdef DXPAIRS
@@ -1182,14 +1177,8 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
         /* Instruction tracing */
 
         if (lltrace) {
-            if (HAS_ARG(opcode)) {
-                printf("%d: %d, %d\n",
-                       f->f_lasti, opcode, oparg);
-            }
-            else {
-                printf("%d: %d\n",
-                       f->f_lasti, opcode);
-            }
+			printf("%d: %d\n",
+				f->f_lasti, opcode);
         }
 #endif
 
@@ -1232,7 +1221,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
             FAST_DISPATCH();
         }
 
-        PREDICTED_WITH_ARG(STORE_FAST);
+        PREDICTED(STORE_FAST);
         TARGET(STORE_FAST)
         {
             v = POP();
@@ -1277,6 +1266,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
             SET_SECOND(w);
             SET_THIRD(x);
             SET_FOURTH(u);
+			SET_VALUE(4, NULL);
             FAST_DISPATCH();
         }
 
@@ -2208,7 +2198,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
             break;
         }
 
-        PREDICTED_WITH_ARG(UNPACK_SEQUENCE);
+        PREDICTED(UNPACK_SEQUENCE);
         TARGET(UNPACK_SEQUENCE)
         {
             v = POP();
@@ -2664,7 +2654,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
             FAST_DISPATCH();
         }
 
-        PREDICTED_WITH_ARG(POP_JUMP_IF_FALSE);
+		PREDICTED(POP_JUMP_IF_FALSE);
         TARGET(POP_JUMP_IF_FALSE)
         {
             w = POP();
@@ -2688,7 +2678,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
             DISPATCH();
         }
 
-        PREDICTED_WITH_ARG(POP_JUMP_IF_TRUE);
+		PREDICTED(POP_JUMP_IF_TRUE);
         TARGET(POP_JUMP_IF_TRUE)
         {
             w = POP();
@@ -2765,7 +2755,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
             DISPATCH();
         }
 
-        PREDICTED_WITH_ARG(JUMP_ABSOLUTE);
+		PREDICTED(JUMP_ABSOLUTE);
         TARGET(JUMP_ABSOLUTE)
         {
             JUMPTO(oparg);
@@ -2798,7 +2788,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
             break;
         }
 
-        PREDICTED_WITH_ARG(FOR_ITER);
+		PREDICTED(FOR_ITER);
         TARGET(FOR_ITER)
         {
             /* before: [iter]; after: [iter, iter()] *or* [] */
@@ -3117,7 +3107,7 @@ PyEval_EvalFrameEx(PyFrameObject *f, int throwflag)
         TARGET(EXTENDED_ARG)
         {
             opcode = NEXTOP();
-            oparg = oparg<<16 | NEXTARG();
+            oparg = oparg<<8 | NEXTARG();
             goto dispatch_opcode;
         }
 

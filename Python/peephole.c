@@ -21,7 +21,7 @@
 #define JUMPS_ON_TRUE(op) (op==POP_JUMP_IF_TRUE || op==JUMP_IF_TRUE_OR_POP)
 #define GETJUMPTGT(arr, i) (GETARG(arr,i) + (ABSOLUTE_JUMP(arr[i]) ? 0 : i+3))
 #define SETARG(arr, i, val) arr[i+2] = val>>8; arr[i+1] = val & 255
-#define CODESIZE(op)  (HAS_ARG(op) ? 3 : 1)
+#define CODESIZE(op)  2//(HAS_ARG(op) ? 3 : 1)
 #define ISBASICBLOCK(blocks, start, bytes) \
     (blocks[start]==blocks[start+bytes-1])
 
@@ -309,6 +309,9 @@ PyCode_Optimize(PyObject *code, PyObject* consts, PyObject *names,
     int cumlc=0, lastlc=0;      /* Count runs of consecutive LOAD_CONSTs */
     unsigned int *blocks = NULL;
     char *name;
+
+	// disable peephole
+	goto exitUnchanged;
 
     /* Bail out if an exception is set */
     if (PyErr_Occurred())
