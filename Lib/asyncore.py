@@ -54,12 +54,22 @@ import warnings
 
 import os
 from errno import EALREADY, EINPROGRESS, EWOULDBLOCK, ECONNRESET, EINVAL, \
-     ENOTCONN, ESHUTDOWN, EINTR, EISCONN, EBADF, ECONNABORTED, EPIPE, EAGAIN, \
-     errorcode
+    ENOTCONN, ESHUTDOWN, EINTR, EISCONN, EBADF, ECONNABORTED, EPIPE, EAGAIN, \
+    errorcode
+
+try:
+    from errno import WSAEALREADY, WSAEINPROGRESS, WSAEWOULDBLOCK, WSAECONNRESET, \
+        WSAEINVAL, WSAENOTCONN, WSAESHUTDOWN, WSAEINTR, WSAEISCONN, WSAEBADF, \
+        WSAECONNABORTED
+except ImportError:
+    WSAEALREADY, WSAEINPROGRESS, WSAEWOULDBLOCK, WSAECONNRESET, \
+    WSAEINVAL, WSAENOTCONN, WSAESHUTDOWN, WSAEINTR, WSAEISCONN, WSAEBADF, \
+    WSAECONNABORTED = \
+    EALREADY, EINPROGRESS, EWOULDBLOCK, ECONNRESET, EINVAL, \
+    ENOTCONN, ESHUTDOWN, EINTR, EISCONN, EBADF, ECONNABORTED
 
 _DISCONNECTED = frozenset((ECONNRESET, ENOTCONN, ESHUTDOWN, ECONNABORTED, EPIPE,
-                           EBADF))
-
+                           EBADF, WSAECONNRESET, WSAENOTCONN, WSAESHUTDOWN, WSAECONNABORTED))
 try:
     socket_map
 except NameError:
@@ -249,7 +259,7 @@ class dispatcher:
             try:
                 self.addr = sock.getpeername()
             except socket.error, err:
-                if err.args[0] in (ENOTCONN, EINVAL):
+                if err.args[0] in (ENOTCONN, EINVAL, WSAENOTCONN, WSAEINVAL):
                     # To handle the case where we got an unconnected
                     # socket.
                     self.connected = False
@@ -345,11 +355,11 @@ class dispatcher:
         self.connected = False
         self.connecting = True
         err = self.socket.connect_ex(address)
-        if err in (EINPROGRESS, EALREADY, EWOULDBLOCK) \
-        or err == EINVAL and os.name in ('nt', 'ce'):
+        if err in (EINPROGRESS, EALREADY, EWOULDBLOCK, WSAEWOULDBLOCK) \
+        or err in (EINVAL, WSAEINVAL) and os.name in ('nt', 'ce'):
             self.addr = address
             return
-        if err in (0, EISCONN):
+        if err in (0, EISCONN, WSAEISCONN):
             self.addr = address
             self.handle_connect_event()
         else:
@@ -374,7 +384,7 @@ class dispatcher:
             result = self.socket.send(data)
             return result
         except socket.error, why:
-            if why.args[0] == EWOULDBLOCK:
+            if why.args[0] in (EWOULDBLOCK, WSAEWOULDBLOCK):
                 return 0
             elif why.args[0] in _DISCONNECTED:
                 self.handle_close()
@@ -408,7 +418,7 @@ class dispatcher:
         try:
             self.socket.close()
         except socket.error, why:
-            if why.args[0] not in (ENOTCONN, EBADF):
+            if why.args[0] not in (ENOTCONN, EBADF, WSAENOTCONN, WSAEBADF):
                 raise
 
     # cheap inheritance, used to pass all other attribute
