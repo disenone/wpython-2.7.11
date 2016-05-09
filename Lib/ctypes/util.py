@@ -19,7 +19,12 @@ if os.name == "nt":
             return 6
         i = i + len(prefix)
         s, rest = sys.version[i:].split(" ", 1)
-        majorVersion = int(s[:-2]) - 6
+        mv = int(s[:-2])
+        if mv >= 19:
+            delta = 5
+        else:
+            delta = 6
+        majorVersion = mv - delta
         minorVersion = int(s[2:3]) / 10.0
         # I don't think paths are affected by minor version in version 6
         if majorVersion == 6:
