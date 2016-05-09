@@ -13,10 +13,10 @@ def _f(a):
 
 dis_f = """\
  %-4d         0 LOAD_FAST                0 (a)
-              3 PRINT_ITEM
+              2 PRINT_ITEM
               4 PRINT_NEWLINE
 
- %-4d         5 LOAD_CONST               1 (1)
+ %-4d         6 LOAD_CONST               1 (1)
               8 RETURN_VALUE
 """%(_f.func_code.co_firstlineno + 1,
      _f.func_code.co_firstlineno + 2)
@@ -28,20 +28,20 @@ def bug708901():
         pass
 
 dis_bug708901 = """\
- %-4d         0 SETUP_LOOP              23 (to 26)
-              3 LOAD_GLOBAL              0 (range)
-              6 LOAD_CONST               1 (1)
+ %-4d         0 SETUP_LOOP              18 (to 18)
+              2 LOAD_GLOBAL              0 (range)
+              4 LOAD_CONST               1 (1)
 
- %-4d         9 LOAD_CONST               2 (10)
-             12 CALL_FUNCTION            2
-             15 GET_ITER
-        >>   16 FOR_ITER                 6 (to 25)
-             19 STORE_FAST               0 (res)
+ %-4d         6 LOAD_CONST               2 (10)
+              8 CALL_FUNCTION            2
+             10 GET_ITER
+        >>   12 FOR_ITER                 4 (to 16)
+             14 STORE_FAST               0 (res)
 
- %-4d        22 JUMP_ABSOLUTE           16
-        >>   25 POP_BLOCK
-        >>   26 LOAD_CONST               0 (None)
-             29 RETURN_VALUE
+ %-4d        16 JUMP_ABSOLUTE           12
+        >>   18 POP_BLOCK
+        >>   20 LOAD_CONST               0 (None)
+             22 RETURN_VALUE
 """%(bug708901.func_code.co_firstlineno + 1,
      bug708901.func_code.co_firstlineno + 2,
      bug708901.func_code.co_firstlineno + 3)
@@ -54,33 +54,33 @@ def bug1333982(x=[]):
 
 dis_bug1333982 = """\
  %-4d         0 LOAD_CONST               1 (0)
-              3 POP_JUMP_IF_TRUE        41
-              6 LOAD_GLOBAL              0 (AssertionError)
-              9 BUILD_LIST               0
-             12 LOAD_FAST                0 (x)
-             15 GET_ITER
-        >>   16 FOR_ITER                12 (to 31)
-             19 STORE_FAST               1 (s)
-             22 LOAD_FAST                1 (s)
-             25 LIST_APPEND              2
-             28 JUMP_ABSOLUTE           16
+              2 POP_JUMP_IF_TRUE        30
+              4 LOAD_GLOBAL              0 (AssertionError)
+              6 BUILD_LIST               0
+              8 LOAD_FAST                0 (x)
+             10 GET_ITER
+        >>   12 FOR_ITER                 8 (to 20)
+             14 STORE_FAST               1 (s)
+             16 LOAD_FAST                1 (s)
+             18 LIST_APPEND              2
+             20 JUMP_ABSOLUTE           12
 
- %-4d   >>   31 LOAD_CONST               2 (1)
-             34 BINARY_ADD
-             35 CALL_FUNCTION            1
-             38 RAISE_VARARGS            1
+ %-4d   >>   22 LOAD_CONST               2 (1)
+             24 BINARY_ADD
+             26 CALL_FUNCTION            1
+             28 RAISE_VARARGS            1
 
- %-4d   >>   41 LOAD_CONST               0 (None)
-             44 RETURN_VALUE
+ %-4d   >>   30 LOAD_CONST               0 (None)
+             32 RETURN_VALUE
 """%(bug1333982.func_code.co_firstlineno + 1,
      bug1333982.func_code.co_firstlineno + 2,
      bug1333982.func_code.co_firstlineno + 3)
 
 _BIG_LINENO_FORMAT = """\
 %3d           0 LOAD_GLOBAL              0 (spam)
-              3 POP_TOP
+              2 POP_TOP
               4 LOAD_CONST               0 (None)
-              7 RETURN_VALUE
+              6 RETURN_VALUE
 """
 
 class DisTests(unittest.TestCase):
