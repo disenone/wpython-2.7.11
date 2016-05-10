@@ -22,6 +22,7 @@ STORE_NAME = chr(dis.opname.index('STORE_NAME'))
 STORE_GLOBAL = chr(dis.opname.index('STORE_GLOBAL'))
 STORE_OPS = [STORE_NAME, STORE_GLOBAL]
 HAVE_ARGUMENT = chr(dis.HAVE_ARGUMENT)
+EXTENDED_ARG = chr(dis.opname.index('EXTENDED_ARG'))
 
 # Modulefinder does a good job at simulating Python's, but it can not
 # handle __path__ modifications packages make at runtime.  Therefore there
@@ -369,15 +370,28 @@ class ModuleFinder:
         names = co.co_names
         consts = co.co_consts
         LOAD_LOAD_AND_IMPORT = LOAD_CONST + LOAD_CONST + IMPORT_NAME
+        extended_arg = 0
+        last3op = ''
+        last3arg = []
         while code:
             c = code[0]
-            if c in STORE_OPS:
-                oparg, = unpack('<H', code[1:3])
-                yield "store", (names[oparg],)
-                code = code[3:]
+            oparg = ord(code[1]) + extended_arg
+            code = code[2:]
+            if c == EXTENDED_ARG:
+                extended_arg = oparg << 8
                 continue
-            if code[:9:3] == LOAD_LOAD_AND_IMPORT:
-                oparg_1, oparg_2, oparg_3 = unpack('<xHxHxH', code[:9])
+            else:
+                extended_arg = 0
+
+            last3op = last3op[1:] + c
+            last3arg = last3arg[1:] + [oparg]
+
+            if c in STORE_OPS:
+                yield "store", (names[oparg],)
+                continue           
+
+            if last3op == LOAD_LOAD_AND_IMPORT:
+                oparg_1, oparg_2, oparg_3 = last3arg
                 level = consts[oparg_1]
                 if level == -1: # normal import
                     yield "import", (consts[oparg_2], names[oparg_3])
@@ -385,12 +399,7 @@ class ModuleFinder:
                     yield "absolute_import", (consts[oparg_2], names[oparg_3])
                 else: # relative import
                     yield "relative_import", (level, consts[oparg_2], names[oparg_3])
-                code = code[9:]
                 continue
-            if c >= HAVE_ARGUMENT:
-                code = code[3:]
-            else:
-                code = code[1:]
 
     def scan_code(self, co, m):
         code = co.co_code
