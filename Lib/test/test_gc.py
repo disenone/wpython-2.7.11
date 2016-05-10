@@ -256,7 +256,7 @@ class GCTests(unittest.TestCase):
         a = dict()
         # since gc.collect(), we created two objects:
         # the dict, and the tuple returned by get_count()
-        assertEqual(gc.get_count(), (2, 0, 0))
+        assertEqual(gc.get_count(), (3, 0, 0))
 
     def test_collect_generations(self):
         # Avoid future allocation of method object
