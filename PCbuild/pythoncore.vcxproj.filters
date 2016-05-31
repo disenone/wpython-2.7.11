@@ -944,6 +944,9 @@
     <ClCompile Include="..\Python\traceback.c">
       <Filter>Python</Filter>
     </ClCompile>
+    <ClCompile Include="..\PC\invalid_parameter_handler.c">
+      <Filter>PC</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\PC\python_nt.rc">

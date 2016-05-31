@@ -80,8 +80,11 @@ internal_close(fileio *self)
         self->fd = -1;
         /* fd is accessible and someone else may have closed it */
         if (_PyVerify_fd(fd)) {
-            Py_BEGIN_ALLOW_THREADS
+			Py_BEGIN_ALLOW_THREADS
+			_Py_BEGIN_SUPPRESS_IPH
+			errno = 0;
             err = close(fd);
+			_Py_END_SUPPRESS_IPH
             if (err < 0)
                 save_errno = errno;
             Py_END_ALLOW_THREADS
@@ -145,7 +148,12 @@ dircheck(fileio* self, PyObject *nameobj)
     struct stat buf;
     if (self->fd < 0)
         return 0;
-    if (fstat(self->fd, &buf) == 0 && S_ISDIR(buf.st_mode)) {
+	int stat_result;
+	_Py_BEGIN_SUPPRESS_IPH
+	errno = 0;
+	stat_result = fstat(self->fd, &buf);
+	_Py_END_SUPPRESS_IPH
+	if (stat_result == 0 && S_ISDIR(buf.st_mode)) {
         errno = EISDIR;
         PyErr_SetFromErrnoWithFilenameObject(PyExc_IOError, nameobj);
         return -1;
@@ -159,7 +167,12 @@ check_fd(int fd)
 {
 #if defined(HAVE_FSTAT)
     struct stat buf;
-    if (!_PyVerify_fd(fd) || (fstat(fd, &buf) < 0 && errno == EBADF)) {
+	int is_bad_fd;
+	_Py_BEGIN_SUPPRESS_IPH
+	errno = 0;
+	is_bad_fd = (!_PyVerify_fd(fd) || (fstat(fd, &buf) < 0 && errno == EBADF));
+	_Py_END_SUPPRESS_IPH
+	if (is_bad_fd) {
         PyObject *exc;
         char *msg = strerror(EBADF);
         exc = PyObject_CallFunction(PyExc_OSError, "(is)",
@@ -475,6 +488,7 @@ fileio_readinto(fileio *self, PyObject *args)
     if (_PyVerify_fd(self->fd)) {
         len = pbuf.len;
         Py_BEGIN_ALLOW_THREADS
+		_Py_BEGIN_SUPPRESS_IPH
         errno = 0;
 #if defined(MS_WIN64) || defined(MS_WINDOWS)
         if (len > INT_MAX)
@@ -483,6 +497,7 @@ fileio_readinto(fileio *self, PyObject *args)
 #else
         n = read(self->fd, pbuf.buf, len);
 #endif
+		_Py_END_SUPPRESS_IPH
         Py_END_ALLOW_THREADS
     } else
         n = -1;
@@ -503,9 +518,18 @@ new_buffersize(fileio *self, size_t currentsize)
 #ifdef HAVE_FSTAT
     off_t pos, end;
     struct stat st;
-    if (fstat(self->fd, &st) == 0) {
-        end = st.st_size;
-        pos = lseek(self->fd, 0L, SEEK_CUR);
+	int stat_result;
+	
+	_Py_BEGIN_SUPPRESS_IPH
+	errno = 0;
+	stat_result = fstat(self->fd, &st);
+	_Py_END_SUPPRESS_IPH
+		if (stat_result == 0) {
+		end = st.st_size;
+		_Py_BEGIN_SUPPRESS_IPH
+		errno = 0;
+		pos = lseek(self->fd, 0L, SEEK_CUR);
+		_Py_END_SUPPRESS_IPH
         /* Files claiming a size smaller than SMALLCHUNK may
            actually be streaming pseudo-files. In this case, we
            apply the more aggressive algorithm below.
@@ -553,6 +577,7 @@ fileio_readall(fileio *self)
                 return NULL; /* result has been freed */
         }
         Py_BEGIN_ALLOW_THREADS
+		_Py_BEGIN_SUPPRESS_IPH
         errno = 0;
         n = newsize - total;
 #if defined(MS_WIN64) || defined(MS_WINDOWS)
@@ -566,6 +591,7 @@ fileio_readall(fileio *self)
                  PyBytes_AS_STRING(result) + total,
                  n);
 #endif
+		_Py_END_SUPPRESS_IPH
         Py_END_ALLOW_THREADS
         if (n == 0)
             break;
@@ -630,12 +656,14 @@ fileio_read(fileio *self, PyObject *args)
 
     if (_PyVerify_fd(self->fd)) {
         Py_BEGIN_ALLOW_THREADS
+		_Py_BEGIN_SUPPRESS_IPH
         errno = 0;
 #if defined(MS_WIN64) || defined(MS_WINDOWS)
         n = read(self->fd, ptr, (int)size);
 #else
         n = read(self->fd, ptr, size);
 #endif
+		_Py_END_SUPPRESS_IPH
         Py_END_ALLOW_THREADS
     } else
         n = -1;
@@ -672,6 +700,7 @@ fileio_write(fileio *self, PyObject *args)
 
     if (_PyVerify_fd(self->fd)) {
         Py_BEGIN_ALLOW_THREADS
+		_Py_BEGIN_SUPPRESS_IPH
         errno = 0;
         len = pbuf.len;
 #if defined(MS_WIN64) || defined(MS_WINDOWS)
@@ -681,6 +710,7 @@ fileio_write(fileio *self, PyObject *args)
 #else
         n = write(self->fd, pbuf.buf, len);
 #endif
+		_Py_END_SUPPRESS_IPH
         Py_END_ALLOW_THREADS
     } else
         n = -1;
@@ -737,12 +767,15 @@ portable_lseek(int fd, PyObject *posobj, int whence)
     }
 
     if (_PyVerify_fd(fd)) {
-        Py_BEGIN_ALLOW_THREADS
+		Py_BEGIN_ALLOW_THREADS
+		_Py_BEGIN_SUPPRESS_IPH
+		errno = 0;
 #if defined(MS_WIN64) || defined(MS_WINDOWS)
         res = _lseeki64(fd, pos, whence);
 #else
         res = lseek(fd, pos, whence);
 #endif
+		_Py_END_SUPPRESS_IPH
         Py_END_ALLOW_THREADS
     } else
         res = -1;

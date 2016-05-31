@@ -1354,7 +1354,9 @@ new_mmap_object(PyTypeObject *type, PyObject *args, PyObject *kwdict)
             PyErr_SetFromErrno(mmap_module_error);
             return NULL;
         }
+		_Py_BEGIN_SUPPRESS_IPH
         fh = (HANDLE)_get_osfhandle(fileno);
+		_Py_END_SUPPRESS_IPH
         if (fh==(HANDLE)-1) {
             PyErr_SetFromErrno(mmap_module_error);
             return NULL;
